@@ -41,9 +41,6 @@ func (d *Decoder) Decode() (bool, error) {
 	r := d.r
 	var bit, outBit bool
 	var err error
-	if debug {
-		d.fmt("start decode:\n")
-	}
 	for {
 		if d.low >= half {
 		} else if d.high < half {
@@ -64,15 +61,6 @@ func (d *Decoder) Decode() (bool, error) {
 		if bit {
 			d.bio |= 1
 		}
-	}
-	if d.bio >= d.high+1 {
-		fmt.Printf("!!! bio %d >= high %d\n", d.bio, d.high)
-	}
-	if d.bio < d.low {
-		fmt.Printf("!!!! bio %d < low %d\n", d.bio, d.low)
-	}
-	if debug {
-		d.fmt("after shared:\n")
 	}
 	span := 1 + d.high - d.low
 	bDiff := (d.bio - d.low) << 8

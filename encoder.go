@@ -64,9 +64,6 @@ func (t *Encoder) Encode(bit bool) error {
 		if err := w.WriteBool(bit); err != nil {
 			return err
 		}
-		if debug {
-			fmt.Printf("\t\twrote %t\n", bit)
-		}
 		t.writes++
 	}
 	t.low, t.high = l, h
@@ -87,20 +84,11 @@ func (t *Encoder) End() error {
 	m := h / 2
 	w := t.w
 	var err error
-	if debug {
-		fmt.Printf("end:\n")
-	}
 	for err == nil && (l < t.low || h > t.high) {
 		if m <= trg {
-			if debug {
-				fmt.Printf("\ttrue\n")
-			}
 			err = w.WriteBool(true)
 			l, m = m, m+(h-m)/2
 		} else {
-			if debug {
-				fmt.Printf("\tfalse\n")
-			}
 			err = w.WriteBool(false)
 			m, h = l+(m-l)/2, m
 		}
