@@ -4,8 +4,8 @@
 package dbc
 
 const (
-	ProbBits = 8
-	ProbLim  = 1 << ProbBits
+	ProbBits = 8             // bits of probability space
+	ProbLim  = 1 << ProbBits // upper bound (exclusive) of probability values
 	oneBits  = 48
 	one      = 1 << oneBits
 	top      = one << ProbBits
