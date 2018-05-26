@@ -77,9 +77,6 @@ func (d *Decoder) Decode() (bool, error) {
 	span := 1 + d.high - d.low
 	bDiff := (d.bio - d.low) << 8
 	val := bDiff / span
-	if val%span >= span/2 {
-		val++
-	}
 
 	if debug {
 		fmt.Printf("=> val %d, p %d\n", val, d.p)

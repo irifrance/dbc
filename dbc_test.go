@@ -22,9 +22,39 @@ func TestDbcStaticBad(t *testing.T) {
 	}
 }
 
+func TestDbcDynamic(t *testing.T) {
+	bio := bb.NewBuffer(1024)
+	N := 16389
+	enc := NewEncoder(bio, uint64(N))
+	d := make([]bool, N)
+	ps := make([]int, N)
+	for i := range d {
+		p := rand.Intn(255) + 1
+		bit := rand.Intn(p) < p
+		d[i] = bit
+		ps[i] = p
+		enc.SetP(p)
+		if err := enc.Encode(bit); err != nil {
+			t.Fatal(err)
+		}
+	}
+	bio.SeekBit(0)
+	dec := NewDecoder(bio, uint64(N))
+	for i := range d {
+		dec.SetP(ps[i])
+		bit, err := dec.Decode()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if bit != d[i] {
+			t.Errorf("%d: got %t not %t\n", i, bit, d[i])
+		}
+	}
+}
+
 func testDbcStatic(p int, flip bool, t *testing.T) {
 	bio := bb.NewBuffer(1024)
-	N := 16384
+	N := 1029
 	d := make([]bool, N)
 	enc := NewEncoder(bio, uint64(N))
 	enc.SetP(p)
@@ -41,7 +71,7 @@ func testDbcStatic(p int, flip bool, t *testing.T) {
 	if err := enc.End(); err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("p=%d bad=%t wrote %d bits with %d\n", p, flip, N, bio.BitsWritten())
+	//t.Logf("p=%d bad=%t wrote %d bits with %d\n", p, flip, N, bio.BitsWritten())
 	bio.SeekBit(0)
 	dec := NewDecoder(bio, uint64(N))
 	dec.SetP(p)

@@ -5,6 +5,7 @@ package dbc
 
 const (
 	ProbBits = 8
+	ProbLim  = 1 << ProbBits
 	oneBits  = 48
 	one      = 1 << oneBits
 	top      = one << ProbBits
