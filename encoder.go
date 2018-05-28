@@ -22,6 +22,10 @@ func NewEncoder(w bb.Writer, n uint64) *Encoder {
 	return &Encoder{n: n, w: w, p: 128, low: 0, high: top - 1}
 }
 
+func (t *Encoder) Writes() uint64 {
+	return t.writes
+}
+
 func (t *Encoder) SetP(p int) {
 	const mask = (1 << ProbBits) - 1
 	t.p = uint64(p & mask)
@@ -78,6 +82,7 @@ func (t *Encoder) End() error {
 	if t.n != 0 {
 		return io.EOF
 	}
+	nFlush := t.writes + uint64(oneBits+ProbBits)
 	trg := t.low + (t.high-t.low)/2
 	l := uint64(0)
 	h := uint64(top) - 1
@@ -85,6 +90,7 @@ func (t *Encoder) End() error {
 	w := t.w
 	var err error
 	for err == nil && (l < t.low || h > t.high) {
+		t.writes++
 		if m <= trg {
 			err = w.WriteBool(true)
 			l, m = m, m+(h-m)/2
@@ -92,6 +98,10 @@ func (t *Encoder) End() error {
 			err = w.WriteBool(false)
 			m, h = l+(m-l)/2, m
 		}
+	}
+	for t.writes < nFlush {
+		w.WriteBool(false)
+		t.writes++
 	}
 	return err
 }
