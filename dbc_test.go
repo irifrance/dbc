@@ -10,6 +10,26 @@ import (
 	"github.com/irifrance/bb"
 )
 
+func TestBr(t *testing.T) {
+	const N = 1029
+	bio := bb.NewBuffer(N / 8)
+	r := &br{i: 8, r: bio}
+	var d [N]bool
+	for i := range d {
+		if rand.Intn(3) == 1 {
+			d[i] = true
+		}
+		bio.WriteBool(d[i])
+	}
+	bio.SeekBit(0)
+	for i := range d {
+		v, _ := r.ReadBool()
+		if v != d[i] {
+			t.Errorf("%d: got %t not %t\n", i, v, d[i])
+		}
+	}
+}
+
 func TestDbcStaticGood(t *testing.T) {
 	for i := 1; i < 256; i++ {
 		testDbcStatic(i, false, t)
@@ -24,7 +44,7 @@ func TestDbcStaticBad(t *testing.T) {
 
 func TestDbcDynamic(t *testing.T) {
 	bio := bb.NewBuffer(1024)
-	N := 16389
+	N := 16387
 	enc := NewEncoder(bio, uint64(N))
 	d := make([]bool, N)
 	ps := make([]int, N)
@@ -126,5 +146,51 @@ func testDbcStatic(p int, flip bool, t *testing.T) {
 	}
 	if enc.Writes() != dec.Reads() {
 		t.Errorf("dec reads %d enc writes %d\n", dec.Reads(), enc.Writes())
+	}
+}
+
+func BenchmarkEncode(b *testing.B) {
+	b.StopTimer()
+	const N = 8192
+	var d [N]bool
+	for i := range d {
+		if rand.Intn(2) == 1 {
+			d[i] = true
+		}
+	}
+	bio := bb.NewBuffer(8192)
+	enc := NewEncoder(bio, 8192)
+
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		bio.SeekBit(0)
+		for j := 0; j < N; j++ {
+			enc.Encode(d[j])
+		}
+	}
+}
+
+func BenchmarkDecode(b *testing.B) {
+	b.StopTimer()
+	const N = 8192
+	var d [N]bool
+	for i := range d {
+		if rand.Intn(2) == 1 {
+			d[i] = true
+		}
+	}
+	bio := bb.NewBuffer(N / 8)
+	enc := NewEncoder(bio, N)
+	dec := NewDecoder(bio, N)
+	for i := 0; i < N; i++ {
+		enc.Encode(d[i])
+	}
+
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		bio.SeekBit(0)
+		for j := 0; j < N; j++ {
+			dec.Decode()
+		}
 	}
 }

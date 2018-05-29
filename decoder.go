@@ -10,8 +10,24 @@ import (
 	"github.com/irifrance/bb"
 )
 
+type br struct {
+	d byte
+	i uint
+	r io.ByteReader
+}
+
+func (b *br) ReadBool() (bit bool, err error) {
+	if b.i == 8 {
+		b.d, err = b.r.ReadByte()
+		b.i = 0
+	}
+	bit = (b.d>>b.i)&1 == 1
+	b.i++
+	return
+}
+
 type Decoder struct {
-	r         bb.Reader
+	r         br
 	n         uint64
 	err       error
 	p         uint64
@@ -21,7 +37,7 @@ type Decoder struct {
 }
 
 func NewDecoder(r bb.Reader, n uint64) *Decoder {
-	return &Decoder{n: n, r: r, p: 128, low: top - 1, high: top - 1}
+	return &Decoder{n: n, r: br{r: r, i: 8}, p: 128, low: top - 1, high: top - 1}
 }
 
 func (d *Decoder) SetP(p int) {
@@ -39,7 +55,7 @@ func (d *Decoder) Reads() uint64 {
 }
 
 func (d *Decoder) slurp() error {
-	r := d.r
+	r := &d.r
 	var bit bool
 	var err error
 	for {
@@ -53,15 +69,12 @@ func (d *Decoder) slurp() error {
 		d.high |= 1
 		d.bio = (d.bio << 1) & mask
 		bit, err = r.ReadBool()
-		if err != nil {
-			return err
-		}
 		d.reads++
 		if bit {
 			d.bio |= 1
 		}
 	}
-	return nil
+	return err
 }
 
 func (d *Decoder) Decode() (bool, error) {
@@ -70,11 +83,6 @@ func (d *Decoder) Decode() (bool, error) {
 	}
 	d.n--
 	var outBit bool
-	var nDrain uint64
-	if d.n == 0 {
-		nDrain = d.reads
-		_ = nDrain
-	}
 	// here
 	if err := d.slurp(); err != nil {
 		return false, err
@@ -95,7 +103,9 @@ func (d *Decoder) Decode() (bool, error) {
 	}
 	if d.n == 0 {
 		if err := d.slurp(); err != nil {
-			return false, err
+			if err != io.EOF {
+				return false, err
+			}
 		}
 	}
 	return outBit, nil
