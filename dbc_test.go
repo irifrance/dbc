@@ -44,13 +44,13 @@ func TestDbcStaticBad(t *testing.T) {
 
 func TestDbcDynamic(t *testing.T) {
 	bio := bb.NewBuffer(1024)
-	N := 16387
+	N := 8199
 	enc := NewEncoder(bio, uint64(N))
 	d := make([]bool, N)
 	ps := make([]int, N)
 	for i := range d {
 		p := rand.Intn(255) + 1
-		bit := rand.Intn(p) < p
+		bit := rand.Intn(255) < p
 		d[i] = bit
 		ps[i] = p
 		enc.SetP(p)
@@ -93,21 +93,19 @@ func TestDbcIz(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	enc.End()
+	if err := enc.End(); err != nil {
+		t.Fatal(err)
+	}
 	bio.SeekBit(0)
 	dec := NewDecoder(bio, uint64(len(d)))
 	dec.SetP(216)
-	e := make([]bool, len(d))
 	for i := range d {
 		b, err := dec.Decode()
 		if err != nil {
 			t.Fatal(err)
 		}
-		e[i] = b
-	}
-	for i, v := range d {
-		if e[i] != v {
-			t.Errorf("%d: got %t not %t\n", i, e[i], v)
+		if b != d[i] {
+			t.Errorf("%d: got %t not %t\n", i, b, d[i])
 		}
 	}
 }
@@ -158,8 +156,9 @@ func BenchmarkEncode(b *testing.B) {
 			d[i] = true
 		}
 	}
-	bio := bb.NewBuffer(8192)
-	enc := NewEncoder(bio, 8192)
+	bio := bb.NewBuffer(N / 8)
+	enc := NewEncoder(bio, N)
+	enc.SetP(38)
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
@@ -182,6 +181,8 @@ func BenchmarkDecode(b *testing.B) {
 	bio := bb.NewBuffer(N / 8)
 	enc := NewEncoder(bio, N)
 	dec := NewDecoder(bio, N)
+	enc.SetP(38)
+	dec.SetP(38)
 	for i := 0; i < N; i++ {
 		enc.Encode(d[i])
 	}

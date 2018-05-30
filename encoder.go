@@ -6,20 +6,38 @@ package dbc
 import (
 	"fmt"
 	"io"
-
-	"github.com/irifrance/bb"
 )
+
+type bw struct {
+	d byte
+	i uint
+	w io.ByteWriter
+}
+
+func (b *bw) WriteBool(bit bool) error {
+	var err error
+	if bit {
+		b.d |= 1 << b.i
+	}
+	b.i++
+	if b.i == 8 {
+		b.i = 0
+		err = b.w.WriteByte(b.d)
+		b.d = 0
+	}
+	return err
+}
 
 type Encoder struct {
 	n         uint64
-	w         bb.Writer
+	w         bw
 	p         uint64
 	low, high uint64
 	writes    uint64
 }
 
-func NewEncoder(w bb.Writer, n uint64) *Encoder {
-	return &Encoder{n: n, w: w, p: 128, low: 0, high: top - 1}
+func NewEncoder(w io.ByteWriter, n uint64) *Encoder {
+	return &Encoder{n: n, w: bw{w: w}, p: 128, low: 0, high: top - 1}
 }
 
 func (t *Encoder) Writes() uint64 {
@@ -53,7 +71,8 @@ func (t *Encoder) Encode(bit bool) error {
 		t.low = t.high - scale + 1
 	}
 	l, h := t.low, t.high
-	w := t.w
+	w := &t.w
+	var err error
 	for {
 		if l >= half {
 			bit = true
@@ -65,9 +84,7 @@ func (t *Encoder) Encode(bit bool) error {
 		l = (l << 1) & mask
 		h = (h << 1) & mask
 		h |= 1
-		if err := w.WriteBool(bit); err != nil {
-			return err
-		}
+		err = w.WriteBool(bit)
 		t.writes++
 	}
 	t.low, t.high = l, h
@@ -75,7 +92,7 @@ func (t *Encoder) Encode(bit bool) error {
 		fmt.Printf("\tlow %08b...%08b high %08b...%08b\n", t.low>>oneBits, t.low&0xff,
 			t.high>>oneBits, t.high&0xff)
 	}
-	return nil
+	return err
 }
 
 func (t *Encoder) End() error {
@@ -87,8 +104,8 @@ func (t *Encoder) End() error {
 	l := uint64(0)
 	h := uint64(top) - 1
 	m := h / 2
-	w := t.w
 	var err error
+	w := &t.w
 	for err == nil && (l < t.low || h > t.high) {
 		t.writes++
 		if m <= trg {
@@ -100,6 +117,10 @@ func (t *Encoder) End() error {
 		}
 	}
 	for t.writes < nFlush {
+		w.WriteBool(false)
+		t.writes++
+	}
+	for t.writes%8 != 0 {
 		w.WriteBool(false)
 		t.writes++
 	}

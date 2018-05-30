@@ -11,6 +11,7 @@ const (
 	top      = one << ProbBits
 	half     = top / 2
 	mask     = top - 1
+	cmp      = mask & ^(one - 1)
 )
 
 const (

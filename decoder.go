@@ -6,8 +6,6 @@ package dbc
 import (
 	"fmt"
 	"io"
-
-	"github.com/irifrance/bb"
 )
 
 type br struct {
@@ -36,8 +34,8 @@ type Decoder struct {
 	reads     uint64
 }
 
-func NewDecoder(r bb.Reader, n uint64) *Decoder {
-	return &Decoder{n: n, r: br{r: r, i: 8}, p: 128, low: top - 1, high: top - 1}
+func NewDecoder(r io.ByteReader, n uint64) *Decoder {
+	return &Decoder{n: n, r: br{i: 8, r: r}, p: 128, low: top - 1, high: top - 1}
 }
 
 func (d *Decoder) SetP(p int) {
@@ -83,7 +81,6 @@ func (d *Decoder) Decode() (bool, error) {
 	}
 	d.n--
 	var outBit bool
-	// here
 	if err := d.slurp(); err != nil {
 		return false, err
 	}
@@ -102,10 +99,15 @@ func (d *Decoder) Decode() (bool, error) {
 		d.low = d.high - (span*(256-d.p))>>8 + 1
 	}
 	if d.n == 0 {
-		if err := d.slurp(); err != nil {
-			if err != io.EOF {
-				return false, err
-			}
+		var err error
+		err = d.slurp()
+		r := &d.r
+		for d.reads%8 != 0 {
+			_, err = r.ReadBool()
+			d.reads++
+		}
+		if err != nil && err != io.EOF {
+			return false, err
 		}
 	}
 	return outBit, nil
